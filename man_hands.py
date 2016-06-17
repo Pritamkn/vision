@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 from cont_2 import retCont
-from parts import join_points
+from parts import disint
 from parts import retval
 from outer import encContour
+from parts_hum import disint_hum
 
 def swap(x,y):
 	z=[]
@@ -13,11 +14,20 @@ def swap(x,y):
 	return x,y
 
 def cor_hands(samp,samp_side,img,img_side):
+	'''
+	inputs:
+		samp:sample front image
+		samp_side:sample image of side view
+		img: given human front image
+		img_side: given human image of side view
+	
+	output: image of the manipulated hands 
+	'''
 	#taking front view and side view
-	sa,sb,sc,sd,se,sf,sg=join_points(samp,samp_side)
-	a,b,c,d,e,f,g=join_points(img,img_side)
-	conts1,conts2,sx=retCont(sg)
-	conti1,conti2,ix=retCont(g)
+	sa,sb,sc,sd,se,sf=disint(samp,samp_side)
+	a,b,c,d=disint_hum(img)
+	conts1,conts2,sx=retCont(se)
+	conti1,conti2,ix=retCont(a)
 	im=cv2.imread(img)
 	ims=cv2.imread(samp)
 	h,w,d=im.shape
@@ -97,23 +107,26 @@ def cor_hands(samp,samp_side,img,img_side):
 	ys=retval(p,conts1,1)
 	vir_len=ys[1]-ys[0]
 	
-	r=ori_len/vir_len
-	print leni1
-	print ill[0]
-	print ilr[0]
-	print p
+	r=float(ori_len)/vir_len
 	ran1=np.linspace(ill[0],p,50)
 	ran2=np.linspace(p,ilr[0],50)
 	py=retval(p,conts1,1)
 	img_new=np.zeros((h,w,d),dtype=np.uint8)
+	yi=[]
 	for i in ran1:
-		y=retval(i,conts1,1)
-		img_new[int(y[0]),int(i)]=[255,255,255]
-		img_new[int(y[1]),int(i)]=[255,255,255]
-		img_new[int(y[0]),w-int(i)]=[255,255,255]
-		img_new[int(y[1]),w-int(i)]=[255,255,255]
+		yi=retval(i,conti1,1)
+		if len(yi)==2:
+			cv2.circle(img_new,(int(i),int(yi[0]),), 2, (255,255,255), -1)
+			cv2.circle(img_new,(int(i),int(yi[1])), 2, (255,255,255), -1)
+			cv2.circle(img_new,(w-int(i),int(yi[0]),), 2, (255,255,255), -1)
+			cv2.circle(img_new,(w-int(i),int(yi[1])), 2, (255,255,255), -1)
+			#img_new[int(yi[0]),int(i)]=[255,255,255]
+			#img_new[int(yi[1]),int(i)]=[255,255,255]
+			#img_new[int(yi[0]),w-int(i)]=[255,255,255]
+			#img_new[int(yi[1]),w-int(i)]=[255,255,255]
 	
 	#img_new[:,0:int(p)]=sx[:,0:int(p)]
+	c=0
 	for i in ran2:
 		y=retval(i,conts1,1)
 		ref=(y[0]+y[1])/2
@@ -121,12 +134,18 @@ def cor_hands(samp,samp_side,img,img_side):
 		y2=y[1]-ref
 		y1=y1*r+ref
 		y2=y2*r+ref
-		#C.append(i,y1)
-		#C.append(i,y2)
-		img_new[int(y1),int(i)]=[255,255,255]
-		img_new[int(y2),int(i)]=[255,255,255]
-		img_new[int(y1),w-int(i)]=[255,255,255]
-		img_new[int(y2),w-int(i)]=[255,255,255]
+		if c==0:
+			ref2=(yi[0]+yi[1])/2
+			d=ref2-ref
+		cv2.circle(img_new,(int(i),int(y1+d)), 2, (255,255,255), -1)
+		cv2.circle(img_new,(int(i),int(y2+d)), 2, (255,255,255), -1)
+		cv2.circle(img_new,(w-int(i),int(y1+d)), 2, (255,255,255), -1)
+		cv2.circle(img_new,(w-int(i),int(y2+d)), 2, (255,255,255), -1)
+		#img_new[int(y1+d),int(i)]=[255,255,255]
+		#img_new[int(y2+d),int(i)]=[255,255,255]
+		#img_new[int(y1+d),w-int(i)]=[255,255,255]
+		#img_new[int(y2+d),w-int(i)]=[255,255,255]
+		c+=1
 	
 	return img_new
 	
